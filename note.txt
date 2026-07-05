@@ -1,1 +1,4 @@
-use cabal install --lib random if system.random is not in module
+Dependencies:
+
+cabal install --lib random if system.random is not in module
+cabal install --lib ansi-terminal

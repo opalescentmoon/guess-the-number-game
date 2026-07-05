@@ -3,6 +3,7 @@ import System.Random
 import System.Exit
 import Control.Monad
 import System.IO (hSetBuffering, stdout, BufferMode (NoBuffering))
+import System.Console.ANSI
 
 maxNum :: Int
 maxNum = 100
@@ -34,21 +35,32 @@ resolveLimit _ = 999999
 gameDifficulty :: IO Int
 gameDifficulty = do
     putStrLn "Select Difficulty:"
+
     putStrLn "0 = Quit"
+
+    setSGR [SetColor Foreground Vivid Green]
     putStrLn "1 = Easy"
+
+    setSGR [SetColor Foreground Vivid Yellow]
     putStrLn "2 = Medium"
+
+    setSGR [SetColor Foreground Vivid Red]
     putStrLn "3 = Hard"
+
+    setSGR [Reset]
     putStrLn "Any other number = Unlimited"
-    choice <- getNum "That is not a valid number. Please type a digit:"
+
+    choice <- getNum "That is not a valid number. Please type a digit: "
 
     if choice == 0
         then quitGame >> return 0
         else do 
             let limit = resolveLimit choice
+            setSGR [SetBlinkSpeed RapidBlink, SetColor Foreground Vivid Cyan, SetConsoleIntensity BoldIntensity]
             if limit == 999999
                 then putStrLn "You have unlimited attempts!"
                 else putStrLn $ "You have " ++ show limit ++ " attempts!"
-    
+            setSGR [Reset]
             return limit
 
 guessAttempts :: Int -> Int -> Int -> IO ()  -- manages attempts
@@ -59,39 +71,44 @@ guessAttempts target limit attempts = do
     Control.Monad.when (attempts >= limit) (return ())
 
     Control.Monad.unless (attempts >= limit) $ do
+        setSGR [SetColor Foreground Vivid Blue]
         putStr $ "Attempt " ++ show (attempts + 1) ++ ": "
+        setSGR [Reset]
+
         guess <- getNum "Invalid input. Please try again\n"
 
         if guess == 0
             then quitGame
-        else if target == guess 
-                then guessCorrect $ attempts + 1
-                else do
-                    guessWrong target attempts guess
-                    guessAttempts target limit (attempts + 1)
+            else if target == guess 
+                    then guessCorrect $ attempts + 1
+                    else do
+                        guessWrong target attempts guess
+                        guessAttempts target limit (attempts + 1)
 
 guessLimit :: Int -> Int -> Int -> IO () --limits guesses
 guessLimit target limit attempts = do
+    setSGR [SetColor Foreground Vivid Red, SetConsoleIntensity BoldIntensity]
     Control.Monad.when (attempts >= limit) $
         putStrLn $ "Game over! The correct number is: " ++ show target
+    setSGR [Reset]
 
 guessCorrect :: Int -> IO () --if guess correct
 guessCorrect tries = do
+    setSGR [SetColor Foreground Vivid Green, SetConsoleIntensity BoldIntensity]
     putStrLn $ "You guessed correct in " ++ show tries ++ " tries!"
-
+    setSGR [Reset]
 
 guessWrong :: Int -> Int -> Int -> IO () --if guess wrong
 guessWrong target attempts guess = do 
+    setSGR [SetColor Foreground Vivid Yellow]
     if target < guess
         then putStrLn "Too high!"
         else putStrLn "Too low!"
-
-showAnswer :: Int -> IO () --show correct answer
-showAnswer answer = putStrLn $ "The answer was " ++ show answer
+    setSGR [Reset]
 
 playAgain :: IO Bool
 playAgain = do
-    putStr "Play again? Y/N "
+    putStr "Play again? Y/N: "
     input <- getLine 
     case input of
         "y" -> return True
@@ -122,9 +139,13 @@ playGame limit randomGen = do
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
+
+    setSGR [SetColor Foreground Vivid Cyan, SetConsoleIntensity BoldIntensity]
     putStrLn "================"
     putStrLn "GUESS THE NUMBER"
     putStrLn "================"
+    setSGR [Reset]
+
     randomGen <- newStdGen
     limit <- gameDifficulty
     playGame limit randomGen
