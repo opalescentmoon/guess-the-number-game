@@ -1,7 +1,5 @@
 import Data.Char
-import Data.Maybe
 import System.Random
-import System.Environment
 import System.Exit
 import Control.Monad
 import System.IO (hSetBuffering, stdout, BufferMode (NoBuffering))
@@ -9,51 +7,25 @@ import System.IO (hSetBuffering, stdout, BufferMode (NoBuffering))
 maxNum :: Int
 maxNum = 100
 
-getSeed :: [String] -> IO Int -- generates seed buat randomizer. kl egk dikasih lgsg randomize seed
-getSeed [] = getRandomSeed
-getSeed(x:_) = return $ read x
-
-getRandomSeed :: IO Int
-getRandomSeed = fst . random <$> getStdGen
-
-isNum :: String -> Bool
+isNum :: String -> Bool -- checks if input num semua or not
 isNum [] = False
-isNum (x:xs) = all isDigit xs && (x == '-' || isDigit x)
+isNum (x:xs) = length (filter isDigit xs) == length xs && (x == '-' || isDigit x)
 
-getFromStdin :: String -> IO a -> (a -> Bool) -> (a -> b) -> IO b --transforms input jd the desired type
-getFromStdin promptAgain inputAction isOk transformOk = do
+getFromStdin :: String -> IO a -> (a -> Bool) -> (a -> b) -> IO b -- transforms input jd the desired type
+getFromStdin prompt inputAction isValid transformInput = do
     input <- inputAction
-    if isOk input
-        then return $ transformOk input
+    if isValid input
+        then return $ transformInput input
         else do
-            putStr promptAgain
-            getFromStdin promptAgain inputAction isOk transformOk
+            putStr prompt
+            getFromStdin prompt inputAction isValid transformInput
 
 getNum :: String -> IO Int
-getNum promptAgain =
-    getFromStdin promptAgain getLine isNum read
-
-getYesNo :: String -> IO Char
-getYesNo promptAgain =
-    getFromStdin promptAgain getChar (`elem` "yYnN") toUpper
-
-verifyArgsOrQuit :: [String] -> IO ()
-verifyArgsOrQuit args = 
-    if verifyArgs args
-        then putStrLn "Args OK"
-        else do
-            progName <- getProgName
-            putStrLn $ progName ++ ": invalid arguments"
-            exitWith (ExitFailure 1)
-            
-verifyArgs :: [String] -> Bool
-verifyArgs [] = True
-verifyArgs (x:xs) = null xs && isNum x
-
--- gameMode :: 
+getNum prompt =
+    getFromStdin prompt getLine isNum read
 
 resolveLimit :: Int -> Int
-resolveLimit 0 = 999999
+resolveLimit 0 = 0
 resolveLimit 1 = 10
 resolveLimit 2 = 5
 resolveLimit 3 = 3
@@ -61,15 +33,23 @@ resolveLimit _ = 999999
 
 gameDifficulty :: IO Int
 gameDifficulty = do
-    putStrLn "Select Difficulty (1 = Easy | 2 = Medium | 3 = Hard | _ = Unlimited): "
+    putStrLn "Select Difficulty:"
+    putStrLn "0 = Quit"
+    putStrLn "1 = Easy"
+    putStrLn "2 = Medium"
+    putStrLn "3 = Hard"
+    putStrLn "Any other number = Unlimited"
     choice <- getNum "That is not a valid number. Please type a digit:"
 
-    let limit = resolveLimit choice
-    if limit == 999999
-        then putStrLn "You have unlimited attempts!"
-        else putStrLn $ "You have " ++ show limit ++ " attempts!"
+    if choice == 0
+        then quitGame >> return 0
+        else do 
+            let limit = resolveLimit choice
+            if limit == 999999
+                then putStrLn "You have unlimited attempts!"
+                else putStrLn $ "You have " ++ show limit ++ " attempts!"
     
-    return limit
+            return limit
 
 guessAttempts :: Int -> Int -> Int -> IO ()  -- manages attempts
 guessAttempts target limit attempts = do
@@ -129,7 +109,7 @@ quitGame = do
 
 playGame :: Int -> StdGen -> IO ()
 playGame limit randomGen = do
-    putStrLn $ "Guess the number between 1 and " ++ show maxNum ++ " (or 0 to quit: )"
+    putStrLn $ "Guess the number between 1 and " ++ show maxNum ++ " (or 0 to quit): "
     let (target, nextGen) = randomR (1, 100) randomGen
     
     guessAttempts target limit 0
@@ -139,15 +119,12 @@ playGame limit randomGen = do
         then main
         else quitGame
 
-getRandomGen :: Int -> StdGen
-getRandomGen = mkStdGen
-
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
-    args <- getArgs
-    verifyArgsOrQuit args
-    seed <- getSeed args
+    putStrLn "================"
+    putStrLn "GUESS THE NUMBER"
+    putStrLn "================"
+    randomGen <- newStdGen
     limit <- gameDifficulty
-    playGame limit (getRandomGen seed)
-    putStrLn "Game over"
+    playGame limit randomGen
